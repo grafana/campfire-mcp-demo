@@ -1,16 +1,65 @@
 #!/usr/bin/env python3
 """
 Simplified Metrics Application for Grafana MCP Server Demo
-Generates basic HTTP request and active user metrics
+Generates basic HTTP request and active user metrics with comprehensive logging
 """
 
 import time
 import random
 import threading
-from flask import Flask
+import logging
+import json
+import sys
+from flask import Flask, request
 from prometheus_client import (
     Counter, Gauge, generate_latest, CollectorRegistry, CONTENT_TYPE_LATEST
 )
+
+# Configure structured logging
+class StructuredFormatter(logging.Formatter):
+    """Custom formatter for structured JSON logs"""
+
+    def format(self, record):
+        log_entry = {
+            'timestamp': self.formatTime(record, self.datefmt),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno
+        }
+
+        # Add extra fields if present
+        if hasattr(record, 'extra_fields'):
+            log_entry.update(record.extra_fields)
+
+        return json.dumps(log_entry)
+
+# Set up logging
+def setup_logging():
+    """Configure application logging"""
+    # Root logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # Clear any existing handlers
+    logger.handlers.clear()
+
+    # Console handler with structured format
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    formatter = StructuredFormatter()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    # Suppress Flask's default request logging to avoid duplicates
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
+    return logging.getLogger(__name__)
+
+# Initialize logging
+logger = setup_logging()
 
 app = Flask(__name__)
 
@@ -43,23 +92,109 @@ class MetricsUpdater:
         self.running = True
         self.thread = threading.Thread(target=self._update_loop)
         self.thread.daemon = True
-        
+        self.logger = logging.getLogger(f"{__name__}.MetricsUpdater")
+
     def start(self):
         self.thread.start()
-        
+        self.logger.info("Metrics updater started", extra={'extra_fields': {'component': 'metrics_updater', 'action': 'start'}})
+
     def stop(self):
         self.running = False
-        
+        self.logger.info("Metrics updater stopped", extra={'extra_fields': {'component': 'metrics_updater', 'action': 'stop'}})
+
     def _update_loop(self):
         while self.running:
             try:
                 # Simulate active users count
-                active_users.set(random.randint(50, 200))
+                user_count = random.randint(50, 200)
+                active_users.set(user_count)
+
+                # Log metrics update
+                self.logger.debug("Active users metric updated", extra={
+                    'extra_fields': {
+                        'component': 'metrics_updater',
+                        'metric': 'active_users_count',
+                        'value': user_count
+                    }
+                })
+
+                # Occasionally log warnings about high user count
+                if user_count > 180:
+                    self.logger.warning("High user count detected", extra={
+                        'extra_fields': {
+                            'component': 'metrics_updater',
+                            'metric': 'active_users_count',
+                            'value': user_count,
+                            'threshold': 180
+                        }
+                    })
+
                 time.sleep(5)  # Update every 5 seconds
-                
+
             except Exception as e:
-                print(f"Error updating metrics: {e}")
+                self.logger.error("Error updating metrics", extra={
+                    'extra_fields': {
+                        'component': 'metrics_updater',
+                        'error': str(e),
+                        'error_type': type(e).__name__
+                    }
+                })
                 time.sleep(5)
+
+# Request logging middleware
+@app.before_request
+def log_request_info():
+    """Log incoming requests"""
+    start_time = time.time()
+    request.start_time = start_time
+
+    logger.info("Incoming request", extra={
+        'extra_fields': {
+            'component': 'request_handler',
+            'method': request.method,
+            'endpoint': request.endpoint or request.path,
+            'path': request.path,
+            'remote_addr': request.remote_addr,
+            'user_agent': request.headers.get('User-Agent', 'Unknown'),
+            'request_id': f"req_{int(start_time * 1000000)}"
+        }
+    })
+
+@app.after_request
+def log_response_info(response):
+    """Log response information"""
+    if hasattr(request, 'start_time'):
+        duration = (time.time() - request.start_time) * 1000  # Convert to milliseconds
+
+        log_level = logging.INFO
+        if response.status_code >= 400:
+            log_level = logging.ERROR if response.status_code >= 500 else logging.WARNING
+
+        logger.log(log_level, "Request completed", extra={
+            'extra_fields': {
+                'component': 'request_handler',
+                'method': request.method,
+                'endpoint': request.endpoint or request.path,
+                'path': request.path,
+                'status_code': response.status_code,
+                'duration_ms': round(duration, 2),
+                'response_size_bytes': len(response.get_data()) if response.get_data() else 0,
+                'request_id': f"req_{int(request.start_time * 1000000)}"
+            }
+        })
+
+        # Log slow requests
+        if duration > 1000:  # More than 1 second
+            logger.warning("Slow request detected", extra={
+                'extra_fields': {
+                    'component': 'performance',
+                    'endpoint': request.endpoint or request.path,
+                    'duration_ms': round(duration, 2),
+                    'threshold_ms': 1000
+                }
+            })
+
+    return response
 
 # Start metrics updater
 metrics_updater = MetricsUpdater()
@@ -68,52 +203,302 @@ metrics_updater.start()
 @app.route('/metrics')
 def metrics():
     """Prometheus metrics endpoint"""
+    logger.debug("Metrics endpoint accessed", extra={'extra_fields': {'component': 'metrics', 'action': 'scrape'}})
     return generate_latest(registry), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 @app.route('/')
 def home():
     """Home endpoint"""
+    logger.info("Home page accessed", extra={'extra_fields': {'component': 'web', 'page': 'home'}})
+
     # Simulate some processing time
-    time.sleep(random.uniform(0.1, 0.5))
+    processing_time = random.uniform(0.1, 0.5)
+    time.sleep(processing_time)
     
     # Record request
     request_count.labels(method='GET', endpoint='/', status='200').inc()
     
+    logger.debug("Home page processing completed", extra={
+        'extra_fields': {
+            'component': 'web',
+            'page': 'home',
+            'processing_time_ms': round(processing_time * 1000, 2)
+        }
+    })
+
     return "Welcome to the Simplified Metrics Demo App!"
 
 @app.route('/api/users')
 def api_users():
     """API endpoint that occasionally generates errors"""
+    logger.info("Users API endpoint accessed", extra={'extra_fields': {'component': 'api', 'endpoint': 'users'}})
+
     # Simulate processing time
-    time.sleep(random.uniform(0.05, 0.3))
-    
+    processing_time = random.uniform(0.05, 0.3)
+    time.sleep(processing_time)
+
     # Simulate occasional errors (5% chance)
     if random.random() < 0.05:
+        error_msg = "Database connection timeout"
+        logger.error("API error occurred", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'users',
+                'error': error_msg,
+                'error_type': 'database_timeout',
+                'processing_time_ms': round(processing_time * 1000, 2)
+            }
+        })
         request_count.labels(method='GET', endpoint='/api/users', status='500').inc()
         return "Internal Server Error", 500
-    
+
     # Record successful request
     request_count.labels(method='GET', endpoint='/api/users', status='200').inc()
-    
-    return {"users": ["alice", "bob", "charlie"], "count": 3}
+
+    users = ["alice", "bob", "charlie"]
+    logger.info("Users API request successful", extra={
+        'extra_fields': {
+            'component': 'api',
+            'endpoint': 'users',
+            'user_count': len(users),
+            'processing_time_ms': round(processing_time * 1000, 2)
+        }
+    })
+
+    return {"users": users, "count": len(users)}
 
 @app.route('/api/load')
 def simulate_load():
     """Endpoint to simulate heavier processing"""
+    logger.info("Load simulation endpoint accessed", extra={'extra_fields': {'component': 'api', 'endpoint': 'load'}})
+
     # Simulate heavy processing
-    time.sleep(random.uniform(1.0, 3.0))
+    processing_time = random.uniform(1.0, 3.0)
     
+    logger.warning("Starting heavy processing", extra={
+        'extra_fields': {
+            'component': 'api',
+            'endpoint': 'load',
+            'expected_duration_ms': round(processing_time * 1000, 2)
+        }
+    })
+
+    time.sleep(processing_time)
+
     request_count.labels(method='GET', endpoint='/api/load', status='200').inc()
-    
-    return {"message": "Heavy processing completed"}
+
+    logger.info("Heavy processing completed", extra={
+        'extra_fields': {
+            'component': 'api',
+            'endpoint': 'load',
+            'actual_duration_ms': round(processing_time * 1000, 2),
+            'status': 'completed'
+        }
+    })
+
+    return {"message": "Heavy processing completed", "duration_ms": round(processing_time * 1000, 2)}
 
 @app.route('/health')
 def health():
     """Health check endpoint"""
+    logger.debug("Health check accessed", extra={'extra_fields': {'component': 'health', 'action': 'check'}})
+
     request_count.labels(method='GET', endpoint='/health', status='200').inc()
-    return {"status": "healthy", "timestamp": time.time()}
+
+    health_status = {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "active_users": active_users._value._value if hasattr(active_users._value, '_value') else 0,
+        "uptime_seconds": time.time() - app.start_time if hasattr(app, 'start_time') else 0
+    }
+
+    logger.info("Health check completed", extra={
+        'extra_fields': {
+            'component': 'health',
+            'status': health_status['status'],
+            'active_users': health_status['active_users']
+        }
+    })
+
+    return health_status
+
+@app.route('/api/status/<int:code>')
+def test_status_code(code):
+    """Endpoint to test different HTTP status codes"""
+    logger.info(f"Status code test endpoint accessed", extra={
+        'extra_fields': {
+            'component': 'api',
+            'endpoint': 'status_test',
+            'requested_status_code': code
+        }
+    })
+
+    # Simulate some processing time
+    processing_time = random.uniform(0.05, 0.2)
+    time.sleep(processing_time)
+
+    # Record request with the actual status code
+    request_count.labels(method='GET', endpoint='/api/status', status=str(code)).inc()
+
+    # Generate appropriate response based on status code
+    if code == 200:
+        response_data = {"message": "OK", "status_code": code}
+        logger.info("Status test successful", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'processing_time_ms': round(processing_time * 1000, 2)
+            }
+        })
+        return response_data, 200
+
+    elif code == 400:
+        error_msg = "Bad Request - Invalid input provided"
+        logger.warning("Bad request simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'bad_request'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 400
+
+    elif code == 401:
+        error_msg = "Unauthorized - Authentication required"
+        logger.warning("Unauthorized access simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'unauthorized'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 401
+
+    elif code == 403:
+        error_msg = "Forbidden - Access denied"
+        logger.warning("Forbidden access simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'forbidden'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 403
+
+    elif code == 404:
+        error_msg = "Not Found - Resource does not exist"
+        logger.warning("Not found simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'not_found'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 404
+
+    elif code == 429:
+        error_msg = "Too Many Requests - Rate limit exceeded"
+        logger.warning("Rate limit simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'rate_limit'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 429
+
+    elif code == 500:
+        error_msg = "Internal Server Error - Something went wrong"
+        logger.error("Internal server error simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'internal_error'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 500
+
+    elif code == 502:
+        error_msg = "Bad Gateway - Upstream service unavailable"
+        logger.error("Bad gateway simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'bad_gateway'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 502
+
+    elif code == 503:
+        error_msg = "Service Unavailable - Server is temporarily unavailable"
+        logger.error("Service unavailable simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'error': error_msg,
+                'error_type': 'service_unavailable'
+            }
+        })
+        return {"error": error_msg, "status_code": code}, 503
+
+    else:
+        # For any other code, return a generic response
+        logger.info(f"Custom status code {code} simulated", extra={
+            'extra_fields': {
+                'component': 'api',
+                'endpoint': 'status_test',
+                'status_code': code,
+                'message': 'custom_status_code'
+            }
+        })
+        return {"message": f"Custom status code {code}", "status_code": code}, code
+
+@app.route('/api/random-status')
+def random_status():
+    """Endpoint that returns random HTTP status codes for testing"""
+    # Define possible status codes with weights (more common ones have higher weight)
+    status_codes = [200, 200, 200, 200, 200, 200, 400, 401, 403, 404, 429, 500, 502, 503]
+    chosen_code = random.choice(status_codes)
+
+    logger.info("Random status endpoint accessed", extra={
+        'extra_fields': {
+            'component': 'api',
+            'endpoint': 'random_status',
+            'chosen_status_code': chosen_code
+        }
+    })
+
+    # Redirect to the status code testing endpoint
+    return test_status_code(chosen_code)
 
 if __name__ == '__main__':
+    app.start_time = time.time()
+
+    logger.info("Starting Simplified Metrics Demo Application", extra={
+        'extra_fields': {
+            'component': 'application',
+            'action': 'startup',
+            'version': '1.0.0',
+            'port': 8000
+        }
+    })
+
     print("Starting Simplified Metrics Demo Application...")
     print("Metrics available at: http://localhost:8000/metrics")
     print("Application endpoints:")
@@ -121,18 +506,49 @@ if __name__ == '__main__':
     print("  - http://localhost:8000/api/users")
     print("  - http://localhost:8000/api/load")
     print("  - http://localhost:8000/health")
+    print("  - http://localhost:8000/api/status/<code>  (test specific status codes)")
+    print("  - http://localhost:8000/api/random-status  (random status codes)")
     print("\nExposing metrics:")
     print("  - http_requests_total (method, endpoint, status)")
     print("  - active_users_count")
+    print("\nGenerating structured JSON logs:")
+    print("  - Request/response logging with status codes")
+    print("  - Error tracking by status code")
+    print("  - Performance monitoring")
+    print("  - Component-specific logs")
+    print("\nExample status code queries:")
+    print("  - http://localhost:8000/api/status/404")
+    print("  - http://localhost:8000/api/status/500")
+    print("  - http://localhost:8000/api/random-status")
     print("\n🔄 Live reload enabled - code changes will auto-restart the server")
-    
-    # Enhanced development server configuration
-    app.run(
-        host='0.0.0.0',
-        port=8000,
-        debug=True,
-        use_reloader=True,
-        use_debugger=True,
-        threaded=True,
-        extra_files=None  # Flask will auto-detect Python files
-    )
+
+    try:
+        # Enhanced development server configuration
+        app.run(
+            host='0.0.0.0',
+            port=8000,
+            debug=True,
+            use_reloader=True,
+            use_debugger=True,
+            threaded=True,
+            extra_files=None  # Flask will auto-detect Python files
+        )
+    except KeyboardInterrupt:
+        logger.info("Application shutdown requested", extra={
+            'extra_fields': {
+                'component': 'application',
+                'action': 'shutdown',
+                'reason': 'keyboard_interrupt'
+            }
+        })
+        metrics_updater.stop()
+    except Exception as e:
+        logger.error("Application crashed", extra={
+            'extra_fields': {
+                'component': 'application',
+                'action': 'crash',
+                'error': str(e),
+                'error_type': type(e).__name__
+            }
+        })
+        raise

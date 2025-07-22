@@ -1,0 +1,94 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Docker container logs
+  - job_name: containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: containerlogs
+          __path__: /var/lib/docker/containers/*/*log
+
+    pipeline_stages:
+      # Parse Docker JSON log format
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            time: time
+      
+      # Extract container ID from file path and try to get container name
+      - regex:
+          expression: '.*containers/(?P<container_id>[^/]+)/.*'
+          source: filename
+      
+      # Try docker stage to get container metadata
+      - docker: {}
+      
+      # For our specific app container, set a known container name
+      - match:
+          selector: '{filename=~".*27ae7c9a1650.*"}'
+          stages:
+            - static_labels:
+                container_name: "metrics-demo-app"
+      
+      # Parse JSON logs from our Flask app
+      - match:
+          selector: '{container_name="metrics-demo-app"}'
+          stages:
+            # Try to parse the log line as JSON (our structured logs)
+            - json:
+                expressions:
+                  timestamp: timestamp
+                  level: level
+                  logger: logger
+                  message: message
+                  component: component
+                  endpoint: endpoint
+                  method: method
+                  status_code: status_code
+                  duration_ms: duration_ms
+                  error: error
+                  error_type: error_type
+                  action: action
+                  request_id: request_id
+                  processing_time_ms: processing_time_ms
+                  user_count: user_count
+                  remote_addr: remote_addr
+                  path: path
+                source: output
+            
+            # Add labels for easier querying
+            - labels:
+                level:
+                component:
+                endpoint:
+                error_type:
+                status_code:
+                method:
+            
+            # Use the timestamp from the log if available
+            - timestamp:
+                source: timestamp
+                format: "2006-01-02 15:04:05,000"
+      
+      # For any other containers, just add basic labels
+      - match:
+          selector: '{container_name!="metrics-demo-app"}'
+          stages:
+            - labels:
+                level: "unknown"
+                component: "system"
+      
+      # Set output as the final log line
+      - output:
+          source: output 
