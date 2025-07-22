@@ -25,6 +25,12 @@ GIve a moniroting title to the dashboard.
 
 - Can you now add some latency metrics and then add them to the dashboard as well?
 
+extra:
+if we want to demo loki we can ask something like:
+- Can you query my grafana to see if there are any error logs in metrics-demo-app container
+
+and maybe add a log panel in the dashboard.
+
 ## 🎯 Overview
 
 The demo consists of:
