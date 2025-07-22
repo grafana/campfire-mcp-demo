@@ -1,0 +1,34 @@
+[project]
+name = "campfire-mcp-demo"
+version = "0.1.0"
+description = "Load Generation Script for Grafana MCP Server Demo"
+requires-python = ">=3.11"
+dependencies = [
+    "prometheus_client==0.21.0",
+    "flask==3.0.0",
+    "requests==2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "*.py",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.black]
+line-length = 88
+target-version = ['py311'] 

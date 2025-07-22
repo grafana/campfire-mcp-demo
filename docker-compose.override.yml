@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  app:
+    volumes:
+      - ./app.py:/app/app.py  # Mount just the app.py file for live reload
+      - ./scripts:/app/scripts  # Mount scripts directory if you modify those
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1 
