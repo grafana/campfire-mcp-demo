@@ -34,12 +34,12 @@ scrape_configs:
       # Try docker stage to get container metadata
       - docker: {}
       
-      # For our specific app container, set a known container name
+      # For our specific app container, use docker labels to identify it
       - match:
-          selector: '{filename=~".*27ae7c9a1650.*"}'
+          selector: '{container_name="metrics-demo-app"}'
           stages:
             - static_labels:
-                container_name: "metrics-demo-app"
+                app: "metrics-demo-app"
       
       # Parse JSON logs from our Flask app
       - match:
