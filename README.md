@@ -20,8 +20,8 @@ to create some demo metrics including errors.
 
 Ask cursor the following questions:
 
-- Can you create a dashbard in my Grafana instance including the http requests rate of the app?
-GIve a moniroting title to the dashboard.
+- Can you create a dashboard in my Grafana instance including the http requests rate of the app?
+Give a monitoring title to the dashboard.
 
 - Can you now add some latency metrics and then add them to the dashboard as well?
 
