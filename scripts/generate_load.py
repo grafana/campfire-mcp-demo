@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Load Generation Script for Grafana MCP Server Demo
+Load Generation Script for Simplified Metrics Demo App
 Generates traffic to create interesting metrics patterns
 """
 

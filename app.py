@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simplified Metrics Application for Grafana MCP Server Demo
+Simplified Metrics Demo App
 Generates basic HTTP request and active user metrics with comprehensive logging
 """
 
