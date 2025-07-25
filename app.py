@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simplified Metrics Application for Grafana MCP Server Demo
+Simplified Metrics Demo App
 Generates basic HTTP request and active user metrics with comprehensive logging
 """
 
@@ -17,6 +17,7 @@ from prometheus_client import (
     CollectorRegistry,
     Counter,
     Gauge,
+    Histogram,
     generate_latest,
 )
 
@@ -87,6 +88,13 @@ registry = CollectorRegistry()
 request_count = Counter(
     "http_requests_total",
     "Total HTTP requests",
+    ["method", "endpoint", "status"],
+    registry=registry,
+)
+
+request_duration = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
     ["method", "endpoint", "status"],
     registry=registry,
 )
@@ -194,7 +202,15 @@ def log_request_info():
 def log_response_info(response):
     """Log response information"""
     if hasattr(g, "start_time"):
-        duration = (time.time() - g.start_time) * 1000  # Convert to milliseconds
+        duration_seconds = time.time() - g.start_time
+        duration_ms = duration_seconds * 1000  # Convert to milliseconds for logging
+
+        # Record request duration in histogram
+        request_duration.labels(
+            method=request.method,
+            endpoint=request.endpoint or request.path,
+            status=str(response.status_code)
+        ).observe(duration_seconds)
 
         log_level = logging.INFO
         if response.status_code >= 400:
@@ -212,7 +228,7 @@ def log_response_info(response):
                     "endpoint": request.endpoint or request.path,
                     "path": request.path,
                     "status_code": response.status_code,
-                    "duration_ms": round(duration, 2),
+                    "duration_ms": round(duration_ms, 2),
                     "response_size_bytes": (
                         len(response.get_data()) if response.get_data() else 0
                     ),
@@ -222,14 +238,14 @@ def log_response_info(response):
         )
 
         # Log slow requests
-        if duration > 1000:  # More than 1 second
+        if duration_ms > 1000:  # More than 1 second
             logger.warning(
                 "Slow request detected",
                 extra={
                     "extra_fields": {
                         "component": "performance",
                         "endpoint": request.endpoint or request.path,
-                        "duration_ms": round(duration, 2),
+                        "duration_ms": round(duration_ms, 2),
                         "threshold_ms": 1000,
                     }
                 },
@@ -650,6 +666,7 @@ if __name__ == "__main__":
     print("  - http://localhost:8000/api/random-status  (random status codes)")
     print("\nExposing metrics:")
     print("  - http_requests_total (method, endpoint, status)")
+    print("  - http_request_duration_seconds (method, endpoint, status)")
     print("  - active_users_count")
     print("\nGenerating structured JSON logs:")
     print("  - Request/response logging with status codes")
