@@ -39,7 +39,24 @@ Flask App ──→ Prometheus ──→ Grafana
 ## 📊 Available Metrics
 
 - `http_requests_total` - Request counts by endpoint/status
-- `active_users_count` - Simulated active users
+- `http_request_duration_seconds` - Request latency histogram (percentiles, averages)
+- `active_users_count` - Simulated active users (50-200 range)
+
+### Example PromQL Queries
+
+```promql
+# Request rate by endpoint
+rate(http_requests_total[5m])
+
+# 95th percentile latency
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+
+# Error rate
+rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])
+
+# Average response time
+rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])
+```
 
 ## 🎛️ Endpoints
 
