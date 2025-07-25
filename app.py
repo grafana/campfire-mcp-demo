@@ -93,19 +93,19 @@ def setup_tracing():
         "service.version": "1.0.0",
         "deployment.environment": "development"
     })
-    
+
     trace.set_tracer_provider(TracerProvider(resource=resource))
-    
+
     # Configure OTLP exporter to send traces to Tempo
     otlp_exporter = OTLPSpanExporter(
         endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317"),
         insecure=True
     )
-    
+
     # Add span processor
     span_processor = BatchSpanProcessor(otlp_exporter)
     trace.get_tracer_provider().add_span_processor(span_processor)
-    
+
     logger.info(
         "OpenTelemetry tracing configured",
         extra={"extra_fields": {"component": "tracing", "action": "setup"}}
@@ -362,7 +362,7 @@ def api_users():
         with tracer.start_as_current_span("database.query") as db_span:
             db_span.set_attribute("db.operation", "SELECT")
             db_span.set_attribute("db.table", "users")
-            
+
             # Simulate processing time
             processing_time = random.uniform(0.05, 0.3)
             time.sleep(processing_time)
@@ -373,7 +373,7 @@ def api_users():
                 db_span.set_attribute("error", True)
                 db_span.set_attribute("error.message", error_msg)
                 span.set_attribute("error", True)
-                
+
                 logger.error(
                     "API error occurred",
                     extra={
@@ -394,7 +394,7 @@ def api_users():
 
         users = ["alice", "bob", "charlie"]
         span.set_attribute("users.count", len(users))
-        
+
         logger.info(
             "Users API request successful",
             extra={
@@ -421,7 +421,7 @@ def simulate_load():
 
         # Simulate heavy processing
         processing_time = random.uniform(1.0, 3.0)
-        
+
         # Add span attributes
         span.set_attribute("api.endpoint", "load")
         span.set_attribute("api.operation", "heavy_processing")
@@ -442,14 +442,14 @@ def simulate_load():
         with tracer.start_as_current_span("data_processing") as data_span:
             data_span.set_attribute("step", "data_transformation")
             time.sleep(processing_time * 0.6)
-            
+
         with tracer.start_as_current_span("computation") as comp_span:
             comp_span.set_attribute("step", "heavy_computation")
             comp_span.set_attribute("complexity", "O(n²)")
             time.sleep(processing_time * 0.4)
 
         request_count.labels(method="GET", endpoint="/api/load", status="200").inc()
-        
+
         actual_duration = round(processing_time * 1000, 2)
         span.set_attribute("processing.actual_duration_ms", actual_duration)
 

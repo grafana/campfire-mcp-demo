@@ -12,7 +12,7 @@ datasources:
       timeInterval: "15s"
       queryTimeout: "60s"
       httpMethod: "POST"
-      
+
   - name: Loki
     type: loki
     uid: loki-uid
@@ -46,4 +46,4 @@ datasources:
         spanStartTimeShift: "1h"
         spanEndTimeShift: "1h"
       spanBar:
-        type: "Tag" 
+        type: "Tag"

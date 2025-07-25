@@ -17,7 +17,7 @@ make demo
 
 **Access points:**
 - **Metrics App**: http://localhost:8000
-- **Prometheus**: http://localhost:9090  
+- **Prometheus**: http://localhost:9090
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Tempo**: http://localhost:3200/api/search (tracing)
 
@@ -26,7 +26,7 @@ make demo
 The app generates realistic patterns for testing observability tools:
 
 - **Normal traffic** - Steady baseline metrics
-- **Traffic spikes** - Load testing scenarios  
+- **Traffic spikes** - Load testing scenarios
 - **Error patterns** - Simulate failures and debugging
 - **Slow requests** - Performance analysis scenarios
 
@@ -88,13 +88,13 @@ rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds
 ```bash
 # Setup
 make setup              # Install dependencies
-make docker-up          # Start services  
+make docker-up          # Start services
 make docker-down        # Stop services
 
 # Testing
 make test               # Run integration tests
 
-# Load Generation  
+# Load Generation
 make demo               # Complete demo scenario
 make load-normal        # Normal traffic (300s)
 make load-spike         # Traffic spike (60s)

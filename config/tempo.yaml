@@ -41,4 +41,4 @@ query_frontend:
     duration_slo: 5s
     throughput_bytes_slo: 1.073741824e+09
   trace_by_id:
-    duration_slo: 5s 
+    duration_slo: 5s
