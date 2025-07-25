@@ -26,4 +26,24 @@ datasources:
         - datasourceUid: prometheus-uid
           matcherRegex: "request_id=([\\w-]+)"
           name: "Request ID"
-          url: "/explore?orgId=1&left={\"datasource\":\"prometheus-uid\",\"queries\":[{\"expr\":\"http_requests_total{request_id=\\\"$${__value.raw}\\\"}\",\"refId\":\"A\"}],\"range\":{\"from\":\"now-1h\",\"to\":\"now\"}}" 
+          url: "/explore?orgId=1&left={\"datasource\":\"prometheus-uid\",\"queries\":[{\"expr\":\"http_requests_total{request_id=\\\"$${__value.raw}\\\"}\",\"refId\":\"A\"}],\"range\":{\"from\":\"now-1h\",\"to\":\"now\"}}"
+
+  - name: Tempo
+    type: tempo
+    uid: tempo-uid
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: GET
+      search:
+        hide: false
+      nodeGraph:
+        enabled: true
+      traceQuery:
+        timeShiftEnabled: true
+        spanStartTimeShift: "1h"
+        spanEndTimeShift: "1h"
+      spanBar:
+        type: "Tag" 

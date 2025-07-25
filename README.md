@@ -1,6 +1,6 @@
 # Observability Testing Demo
 
-An example application that generates metrics and logs based on different scenarios to accelerate testing in observability systems. Built with Flask, Prometheus, and Grafana.
+An example application that generates metrics, logs, and traces based on different scenarios to accelerate testing in observability systems. Complete observability stack with Flask, Prometheus, Loki, Tempo, and Grafana.
 
 ## 🚀 Quick Start
 
@@ -19,6 +19,7 @@ make demo
 - **Metrics App**: http://localhost:8000
 - **Prometheus**: http://localhost:9090  
 - **Grafana**: http://localhost:3000 (admin/admin)
+- **Tempo**: http://localhost:3200/api/search (tracing)
 
 ## 📈 Testing Scenarios
 
@@ -32,15 +33,29 @@ The app generates realistic patterns for testing observability tools:
 ## 🏗️ Architecture
 
 ```
-Flask App ──→ Prometheus ──→ Grafana
-(Port 8000)   (Port 9090)    (Port 3000)
+                    ┌─→ Prometheus ──┐
+Flask App ──────────┤  (Port 9090)   ├─→ Grafana (Port 3000)
+(Port 8000)         ├─→ Loki ────────┤
+                    └─→ Tempo ───────┘
+                       (Port 3200)
 ```
 
-## 📊 Available Metrics
+## 📊 Available Data
 
+### Metrics (Prometheus)
 - `http_requests_total` - Request counts by endpoint/status
 - `http_request_duration_seconds` - Request latency histogram (percentiles, averages)
 - `active_users_count` - Simulated active users (50-200 range)
+
+### Traces (Tempo)
+- **Distributed traces** - Full request flows with timing
+- **Custom spans** - Database operations, processing steps
+- **Error tracking** - Failed operations with context
+
+### Logs (Loki)
+- **Structured JSON logs** - Request/response logging
+- **Error tracking** - Detailed error information
+- **Performance monitoring** - Slow request detection
 
 ### Example PromQL Queries
 

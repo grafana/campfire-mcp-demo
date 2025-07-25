@@ -10,6 +10,7 @@ import random
 import sys
 import threading
 import time
+import os
 
 from flask import Flask, g, request
 from prometheus_client import (
@@ -20,6 +21,15 @@ from prometheus_client import (
     Histogram,
     generate_latest,
 )
+
+# OpenTelemetry imports
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
 
 # Store application start time at module level
 app_start_time = time.time()
@@ -74,12 +84,49 @@ def setup_logging():
 # Initialize logging
 logger = setup_logging()
 
+# Set up OpenTelemetry tracing
+def setup_tracing():
+    """Configure OpenTelemetry tracing"""
+    # Set up the tracer provider with resource information
+    resource = Resource.create({
+        "service.name": "metrics-demo-app",
+        "service.version": "1.0.0",
+        "deployment.environment": "development"
+    })
+    
+    trace.set_tracer_provider(TracerProvider(resource=resource))
+    
+    # Configure OTLP exporter to send traces to Tempo
+    otlp_exporter = OTLPSpanExporter(
+        endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317"),
+        insecure=True
+    )
+    
+    # Add span processor
+    span_processor = BatchSpanProcessor(otlp_exporter)
+    trace.get_tracer_provider().add_span_processor(span_processor)
+    
+    logger.info(
+        "OpenTelemetry tracing configured",
+        extra={"extra_fields": {"component": "tracing", "action": "setup"}}
+    )
+
+# Initialize tracing
+setup_tracing()
+
 app = Flask(__name__)
 
 # Development configuration for better live reload
 app.config["ENV"] = "development"
 app.config["DEBUG"] = True
 app.config["TEMPLATES_AUTO_RELOAD"] = True
+
+# Instrument Flask and requests for automatic tracing
+FlaskInstrumentor().instrument_app(app)
+RequestsInstrumentor().instrument()
+
+# Get tracer for custom spans
+tracer = trace.get_tracer(__name__)
 
 # Create a custom registry
 registry = CollectorRegistry()
@@ -301,94 +348,127 @@ def home():
 @app.route("/api/users")
 def api_users():
     """API endpoint that occasionally generates errors"""
-    logger.info(
-        "Users API endpoint accessed",
-        extra={"extra_fields": {"component": "api", "endpoint": "users"}},
-    )
+    with tracer.start_as_current_span("fetch_users") as span:
+        logger.info(
+            "Users API endpoint accessed",
+            extra={"extra_fields": {"component": "api", "endpoint": "users"}},
+        )
 
-    # Simulate processing time
-    processing_time = random.uniform(0.05, 0.3)
-    time.sleep(processing_time)
+        # Add span attributes
+        span.set_attribute("api.endpoint", "users")
+        span.set_attribute("api.operation", "fetch_users")
 
-    # Simulate occasional errors (5% chance)
-    if random.random() < 0.05:
-        error_msg = "Database connection timeout"
-        logger.error(
-            "API error occurred",
+        # Simulate database query
+        with tracer.start_as_current_span("database.query") as db_span:
+            db_span.set_attribute("db.operation", "SELECT")
+            db_span.set_attribute("db.table", "users")
+            
+            # Simulate processing time
+            processing_time = random.uniform(0.05, 0.3)
+            time.sleep(processing_time)
+
+            # Simulate occasional errors (5% chance)
+            if random.random() < 0.05:
+                error_msg = "Database connection timeout"
+                db_span.set_attribute("error", True)
+                db_span.set_attribute("error.message", error_msg)
+                span.set_attribute("error", True)
+                
+                logger.error(
+                    "API error occurred",
+                    extra={
+                        "extra_fields": {
+                            "component": "api",
+                            "endpoint": "users",
+                            "error": error_msg,
+                            "error_type": "database_timeout",
+                            "processing_time_ms": round(processing_time * 1000, 2),
+                        }
+                    },
+                )
+                request_count.labels(method="GET", endpoint="/api/users", status="500").inc()
+                return "Internal Server Error", 500
+
+        # Record successful request
+        request_count.labels(method="GET", endpoint="/api/users", status="200").inc()
+
+        users = ["alice", "bob", "charlie"]
+        span.set_attribute("users.count", len(users))
+        
+        logger.info(
+            "Users API request successful",
             extra={
                 "extra_fields": {
                     "component": "api",
                     "endpoint": "users",
-                    "error": error_msg,
-                    "error_type": "database_timeout",
+                    "user_count": len(users),
                     "processing_time_ms": round(processing_time * 1000, 2),
                 }
             },
         )
-        request_count.labels(method="GET", endpoint="/api/users", status="500").inc()
-        return "Internal Server Error", 500
 
-    # Record successful request
-    request_count.labels(method="GET", endpoint="/api/users", status="200").inc()
-
-    users = ["alice", "bob", "charlie"]
-    logger.info(
-        "Users API request successful",
-        extra={
-            "extra_fields": {
-                "component": "api",
-                "endpoint": "users",
-                "user_count": len(users),
-                "processing_time_ms": round(processing_time * 1000, 2),
-            }
-        },
-    )
-
-    return {"users": users, "count": len(users)}
+        return {"users": users, "count": len(users)}
 
 
 @app.route("/api/load")
 def simulate_load():
     """Endpoint to simulate heavier processing"""
-    logger.info(
-        "Load simulation endpoint accessed",
-        extra={"extra_fields": {"component": "api", "endpoint": "load"}},
-    )
+    with tracer.start_as_current_span("heavy_processing") as span:
+        logger.info(
+            "Load simulation endpoint accessed",
+            extra={"extra_fields": {"component": "api", "endpoint": "load"}},
+        )
 
-    # Simulate heavy processing
-    processing_time = random.uniform(1.0, 3.0)
+        # Simulate heavy processing
+        processing_time = random.uniform(1.0, 3.0)
+        
+        # Add span attributes
+        span.set_attribute("api.endpoint", "load")
+        span.set_attribute("api.operation", "heavy_processing")
+        span.set_attribute("processing.expected_duration_ms", round(processing_time * 1000, 2))
 
-    logger.warning(
-        "Starting heavy processing",
-        extra={
-            "extra_fields": {
-                "component": "api",
-                "endpoint": "load",
-                "expected_duration_ms": round(processing_time * 1000, 2),
-            }
-        },
-    )
+        logger.warning(
+            "Starting heavy processing",
+            extra={
+                "extra_fields": {
+                    "component": "api",
+                    "endpoint": "load",
+                    "expected_duration_ms": round(processing_time * 1000, 2),
+                }
+            },
+        )
 
-    time.sleep(processing_time)
+        # Simulate multiple processing steps
+        with tracer.start_as_current_span("data_processing") as data_span:
+            data_span.set_attribute("step", "data_transformation")
+            time.sleep(processing_time * 0.6)
+            
+        with tracer.start_as_current_span("computation") as comp_span:
+            comp_span.set_attribute("step", "heavy_computation")
+            comp_span.set_attribute("complexity", "O(n²)")
+            time.sleep(processing_time * 0.4)
 
-    request_count.labels(method="GET", endpoint="/api/load", status="200").inc()
+        request_count.labels(method="GET", endpoint="/api/load", status="200").inc()
+        
+        actual_duration = round(processing_time * 1000, 2)
+        span.set_attribute("processing.actual_duration_ms", actual_duration)
 
-    logger.info(
-        "Heavy processing completed",
-        extra={
-            "extra_fields": {
-                "component": "api",
-                "endpoint": "load",
-                "actual_duration_ms": round(processing_time * 1000, 2),
-                "status": "completed",
-            }
-        },
-    )
+        logger.info(
+            "Heavy processing completed",
+            extra={
+                "extra_fields": {
+                    "component": "api",
+                    "endpoint": "load",
+                    "actual_duration_ms": actual_duration,
+                    "status": "completed",
+                }
+            },
+        )
 
-    return {
-        "message": "Heavy processing completed",
-        "duration_ms": round(processing_time * 1000, 2),
-    }
+        return {
+            "message": "Heavy processing completed",
+            "duration_ms": actual_duration,
+        }
 
 
 @app.route("/health")
@@ -673,6 +753,11 @@ if __name__ == "__main__":
     print("  - Error tracking by status code")
     print("  - Performance monitoring")
     print("  - Component-specific logs")
+    print("\nGenerating distributed traces:")
+    print("  - OpenTelemetry traces sent to Tempo")
+    print("  - Custom spans for database operations")
+    print("  - Error tracking in traces")
+    print("  - Processing step breakdown")
     print("\nExample status code queries:")
     print("  - http://localhost:8000/api/status/404")
     print("  - http://localhost:8000/api/status/500")
