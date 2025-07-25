@@ -1,197 +1,80 @@
-# Grafana MCP Server Demo
+# Observability Testing Demo
 
-This project demonstrates how to create a comprehensive observability stack with a metrics-generating application, Prometheus, and Grafana, specifically designed to showcase the capabilities of the **Grafana MCP Server**.
+An example application that generates metrics and logs based on different scenarios to accelerate testing in observability systems. Built with Flask, Prometheus, and Grafana.
 
-## Demo flow
-
-Set up the app:
+## 🚀 Quick Start
 
 ```bash
-docker-compose up
-```
+# 1. Setup dependencies
+make setup
 
-Then run
+# 2. Start the stack
+make docker-up
 
-```bash
+# 3. Generate demo traffic
 make demo
 ```
 
-to create some demo metrics including errors.
+**Access points:**
+- **Metrics App**: http://localhost:8000
+- **Prometheus**: http://localhost:9090  
+- **Grafana**: http://localhost:3000 (admin/admin)
 
-Ask cursor the following questions:
+## 📈 Testing Scenarios
 
-- Can you create a dashboard in my Grafana instance including the http requests rate of the app?
-Give a monitoring title to the dashboard.
+The app generates realistic patterns for testing observability tools:
 
-- Can you now add some latency metrics and then add them to the dashboard as well?
-
-extra:
-if we want to demo loki we can ask something like:
-- Can you query my grafana to see if there are any error logs in metrics-demo-app container
-
-and maybe add a log panel in the dashboard.
-
-## 🎯 Overview
-
-The demo consists of:
-- **Metrics Application**: A Python Flask app that generates various types of metrics (counters, gauges, histograms, summaries)
-- **Prometheus**: Scrapes and stores metrics from the application
-- **Grafana**: Visualizes metrics with pre-configured dashboards
+- **Normal traffic** - Steady baseline metrics
+- **Traffic spikes** - Load testing scenarios  
+- **Error patterns** - Simulate failures and debugging
+- **Slow requests** - Performance analysis scenarios
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Metrics App    │    │   Prometheus    │    │    Grafana      │
-│  (Port 8000)    │───▶│  (Port 9090)    │───▶│  (Port 3000)    │
-│                 │    │                 │    │                 │
-│ • HTTP metrics  │    │ • Scraping      │    │ • Dashboards    │
-│ • System stats  │    │ • Storage       │    │ • Alerting      │
-│ • Custom gauges │    │ • PromQL        │    │ • MCP Server    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.8+
-- Docker and Docker Compose
-- Git
-
-### 1. Clone and Setup
-
-```bash
-git clone <repository-url>
-cd campfire
-
-# Install Python dependencies
-pip install -r requirements.txt
-```
-
-### 2. Start the Infrastructure
-
-```bash
-# Start Prometheus and Grafana
-docker-compose up -d
-
-# Check services are running
-docker-compose ps
-```
-
-### 3. Start the Metrics Application
-
-```bash
-# Start the Flask application
-python app.py
-```
-
-The application will be available at:
-- **Metrics App**: http://localhost:8000
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (admin/admin)
-
-### 4. Generate Traffic
-
-```bash
-# Generate sample traffic to create interesting metrics
-python scripts/generate_load.py --scenario demo
+Flask App ──→ Prometheus ──→ Grafana
+(Port 8000)   (Port 9090)    (Port 3000)
 ```
 
 ## 📊 Available Metrics
 
-The application generates the following metrics:
+- `http_requests_total` - Request counts by endpoint/status
+- `active_users_count` - Simulated active users
 
-### HTTP Metrics
-- `http_requests_total`: Counter of HTTP requests by method, endpoint, and status
-- `http_request_duration_seconds`: Histogram of request durations
-- `http_response_size_bytes`: Summary of response sizes
+## 🎛️ Endpoints
 
-### System Metrics
-- `system_cpu_usage_percent`: Current CPU usage
-- `system_memory_usage_bytes`: Current memory usage
+| Endpoint | Behavior |
+|----------|----------|
+| `/` | Normal response |
+| `/api/users` | Fast, 5% error rate |
+| `/api/load` | Slow processing (1-5s) |
+| `/health` | Health check |
+| `/metrics` | Prometheus metrics |
 
-### Application Metrics
-- `active_users_count`: Simulated active user count
-- `database_connections_active`: Simulated database connections
-- `application_errors_total`: Counter of application errors by type and severity
-- `application_info`: Info metric with application metadata
+## 🧪 Commands
 
-## 🎛️ Application Endpoints
-
-| Endpoint | Description | Behavior |
-|----------|-------------|----------|
-| `/` | Home page | Normal response time (0.1-2s) |
-| `/api/users` | User API | Fast response, 5% error rate |
-| `/api/load` | Heavy processing | Slow response (1-5s) |
-| `/health` | Health check | Fast, always successful |
-| `/metrics` | Prometheus metrics | Exposes all metrics |
-
-## 📈 Grafana Dashboard
-
-The project includes a pre-configured dashboard "Metrics Demo Dashboard" with panels showing:
-
-1. **HTTP Request Rate**: Real-time request rates by endpoint
-2. **CPU Usage**: System CPU utilization gauge
-3. **Response Time Percentiles**: 50th and 95th percentile response times
-4. **Active Users**: Current active user count
-5. **Memory Usage**: System memory consumption
-6. **Error Rate**: Application error rates by type
-
-## Demo Scenarios
-
-### Scenario 1: Performance Analysis
-1. Start with normal load generation
-2. Query request rates and response times
-3. Analyze system resource usage
-4. Identify performance bottlenecks
-
-### Scenario 2: Traffic Spike Investigation
-1. Generate traffic spike using load script
-2. Monitor real-time metrics through MCP
-3. Correlate different metric types
-4. Show system behavior under load
-
-### Scenario 3: Error Pattern Detection
-1. Generate error patterns
-2. Query error rates by type and severity
-3. Investigate affected endpoints
-4. Demonstrate troubleshooting workflow
-
-### Scenario 4: Dashboard Management
-1. Search and retrieve dashboards
-2. Analyze panel configurations
-3. Extract and modify queries
-4. Create custom visualizations
-
-## Utility Scripts
-
-### Load Generator
 ```bash
-# Normal load (default)
-python scripts/generate_load.py --scenario normal --duration 300 --rps 3
+# Setup
+make setup              # Install dependencies
+make docker-up          # Start services  
+make docker-down        # Stop services
 
-# Traffic spike
-python scripts/generate_load.py --scenario spike --duration 60 --rps 15
+# Testing
+make test               # Run integration tests
 
-# Error generation
-python scripts/generate_load.py --scenario errors --duration 180
+# Load Generation  
+make demo               # Complete demo scenario
+make load-normal        # Normal traffic (300s)
+make load-spike         # Traffic spike (60s)
+make load-errors        # Error patterns (180s)
 
-# Slow requests
-python scripts/generate_load.py --scenario slow --duration 120
-
-# Complete demo scenario
-python scripts/generate_load.py --scenario demo
+# Code Quality
+make lint-check         # Check code style
+make lint-fix           # Fix linting issues
 ```
 
-### Reset Everything
-```bash
-# Stop all services
-docker-compose down -v
+## 🛠️ Requirements
 
-# Remove volumes and restart
-docker-compose up -d
-
-# Restart the application
-python app.py
-```
+- Python 3.11+
+- Docker & Docker Compose
+- [uv](https://docs.astral.sh/uv/) package manager
