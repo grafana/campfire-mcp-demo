@@ -120,3 +120,9 @@ make lint-fix           # Fix linting issues
 - Python 3.11+
 - Docker & Docker Compose
 - [uv](https://docs.astral.sh/uv/) package manager
+
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
