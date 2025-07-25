@@ -7,7 +7,12 @@ An example application that generates metrics, logs, and traces based on differe
 This application provides a complete observability stack (metrics, logs, and traces) for experimenting with the [Grafana MCP Server](https://github.com/grafana/mcp-grafana) from LLM clients like Claude, Cursor, and others. It generates realistic data patterns that let you query Prometheus and Loki datasources using natural language through the MCP interface, without needing to write PromQL/LogQL manually. See MCP repo for more.
 
 
-## 🚀 Quick Start
+## About This Demo
+
+This application provides a complete observability stack (metrics, logs, and traces) for experimenting with the [Grafana MCP Server](https://github.com/grafana/mcp-grafana) from LLM clients like Claude, Cursor, and others. It generates realistic data patterns that let you query Prometheus and Loki datasources using natural language through the MCP interface, without needing to write PromQL/LogQL manually. See MCP repo for more.
+
+
+## Quick Start
 
 ```bash
 # 1. Setup dependencies
@@ -26,7 +31,7 @@ make demo
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Tempo**: http://localhost:3200/api/search (tracing)
 
-## 📈 Testing Scenarios
+## Testing Scenarios
 
 The app generates realistic patterns for testing observability tools:
 
@@ -35,7 +40,7 @@ The app generates realistic patterns for testing observability tools:
 - **Error patterns** - Simulate failures and debugging
 - **Slow requests** - Performance analysis scenarios
 
-## 🏗️ Architecture
+## Architecture
 
 ```
                     ┌─→ Prometheus ──┐
@@ -45,7 +50,7 @@ Flask App ──────────┤  (Port 9090)   ├─→ Grafana (Po
                        (Port 3200)
 ```
 
-## 📊 Available Data
+## Available Data
 
 ### Metrics (Prometheus)
 - `http_requests_total` - Request counts by endpoint/status
@@ -78,7 +83,7 @@ rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])
 rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])
 ```
 
-## 🎛️ Endpoints
+## Endpoints
 
 | Endpoint | Behavior |
 |----------|----------|
@@ -88,7 +93,7 @@ rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds
 | `/health` | Health check |
 | `/metrics` | Prometheus metrics |
 
-## 🧪 Commands
+## Commands
 
 ```bash
 # Setup
@@ -110,7 +115,7 @@ make lint-check         # Check code style
 make lint-fix           # Fix linting issues
 ```
 
-## 🛠️ Requirements
+## Requirements
 
 - Python 3.11+
 - Docker & Docker Compose
