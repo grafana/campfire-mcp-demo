@@ -44,6 +44,7 @@ Flask App ──→ Prometheus ──→ Grafana
 
 ### Example PromQL Queries
 
+
 ```promql
 # Request rate by endpoint
 rate(http_requests_total[5m])
