@@ -25,22 +25,22 @@ scrape_configs:
             output: log
             stream: stream
             time: time
-      
+
       # Extract container ID from file path and try to get container name
       - regex:
           expression: '.*containers/(?P<container_id>[^/]+)/.*'
           source: filename
-      
+
       # Try docker stage to get container metadata
       - docker: {}
-      
+
       # For our specific app container, use docker labels to identify it
       - match:
           selector: '{container_name="metrics-demo-app"}'
           stages:
             - static_labels:
                 app: "metrics-demo-app"
-      
+
       # Parse JSON logs from our Flask app
       - match:
           selector: '{container_name="metrics-demo-app"}'
@@ -66,7 +66,7 @@ scrape_configs:
                   remote_addr: remote_addr
                   path: path
                 source: output
-            
+
             # Add labels for easier querying
             - labels:
                 level:
@@ -75,12 +75,12 @@ scrape_configs:
                 error_type:
                 status_code:
                 method:
-            
+
             # Use the timestamp from the log if available
             - timestamp:
                 source: timestamp
                 format: "2006-01-02 15:04:05,000"
-      
+
       # For any other containers, just add basic labels
       - match:
           selector: '{container_name!="metrics-demo-app"}'
@@ -88,7 +88,7 @@ scrape_configs:
             - labels:
                 level: "unknown"
                 component: "system"
-      
+
       # Set output as the final log line
       - output:
-          source: output 
+          source: output

@@ -30,6 +30,20 @@ services:
     networks:
       - monitoring
 
+  tempo:
+    image: grafana/tempo:2.3.0
+    container_name: tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"  # OTLP gRPC receiver
+      - "4318:4318"  # OTLP HTTP receiver
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo/tempo.yaml
+      - tempo_data:/tmp/tempo
+    networks:
+      - monitoring
+
   promtail:
     image: grafana/promtail:2.9.0
     container_name: promtail
@@ -90,3 +104,4 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  tempo_data:
