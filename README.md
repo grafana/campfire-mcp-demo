@@ -7,6 +7,11 @@ An example application that generates metrics, logs, and traces based on differe
 This application provides a complete observability stack (metrics, logs, and traces) for experimenting with the [Grafana MCP Server](https://github.com/grafana/mcp-grafana) from LLM clients like Claude, Cursor, and others. It generates realistic data patterns that let you query Prometheus and Loki datasources using natural language through the MCP interface, without needing to write PromQL/LogQL manually. See MCP repo for more.
 
 
+## 📢 About This Demo
+
+This application provides a complete observability stack (metrics, logs, and traces) for experimenting with the [Grafana MCP Server](https://github.com/grafana/mcp-grafana) from LLM clients like Claude, Cursor, and others. It generates realistic data patterns that let you query Prometheus and Loki datasources using natural language through the MCP interface, without needing to write PromQL/LogQL manually. See MCP repo for more.
+
+
 ## 🚀 Quick Start
 
 ```bash
