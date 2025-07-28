@@ -13,23 +13,23 @@ setup: ## Install dependencies with uv
 	uv sync --extra dev
 
 docker-up: ## Start Docker Compose services
-	docker-compose up -d
+	docker compose up -d
 
 docker-down: ## Stop Docker Compose services
-	docker-compose down
+	docker compose down
 
 test-unit: ## Run unit tests
 	$(PYTHON) -m pytest tests/ -v -m "not integration"
 
 test-integration: ## Run integration tests with Docker
-	docker-compose up -d
+	docker compose up -d
 	@timeout=60; while [ $$timeout -gt 0 ]; do \
 		if curl -s http://localhost:8000/health >/dev/null 2>&1; then break; fi; \
 		sleep 2; timeout=$$((timeout-2)); \
 	done
 	$(PYTHON) -m pytest tests/ -v; \
 	test_result=$$?; \
-	docker-compose down; \
+	docker compose down; \
 	exit $$test_result
 
 demo: ## Run a complete demo scenario
