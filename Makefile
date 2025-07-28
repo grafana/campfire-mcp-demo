@@ -45,7 +45,7 @@ load-errors: ## Generate error patterns
 	$(PYTHON) scripts/generate_load.py --scenario errors --duration 180
 
 lint-check: ## Run linting check
-	ruff check .
+	uv run ruff check .
 
 lint-fix: ## Run linting and fix issues
-	ruff check --fix .
+	uv run ruff check --fix .
