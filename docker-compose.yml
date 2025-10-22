@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   prometheus:
-    image: prom/prometheus:v2.48.0
+    image: prom/prometheus:v2.48.0@sha256:b440bc0e8aa5bab44a782952c09516b6a50f9d7b2325c1ffafac7bc833298e2e
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -31,7 +31,7 @@ services:
       - monitoring
 
   tempo:
-    image: grafana/tempo:2.3.0
+    image: grafana/tempo:2.3.0@sha256:c07b89ab1c729c460e8e80f57d46fbfdd3e67573d0d6c479c766b3cab8a3afc5
     container_name: tempo
     ports:
       - "3200:3200"
@@ -76,7 +76,7 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:10.2.0
+    image: grafana/grafana:10.2.0@sha256:1ee0c54286b8ca09a3dd1419ff8653e7780a148a006ac088544203bb0affe550
     container_name: grafana
     ports:
       - "3000:3000"
