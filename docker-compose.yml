@@ -76,7 +76,7 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:10.4.19@sha256:a9043254ba16fb10945cc27333963dfd08eccbb43b51f1222d831cc564e3a1f4
+    image: grafana/grafana:12.2.0@sha256:74144189b38447facf737dfd0f3906e42e0776212bf575dc3334c3609183adf7
     container_name: grafana
     ports:
       - "3000:3000"
