@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Load Generation Script for Grafana MCP Server Demo"
 requires-python = ">=3.11"
 dependencies = [
-    "prometheus_client==0.21.0",
+    "prometheus_client==0.23.1",
     "flask==3.0.0",
     "requests==2.32.5",
     "opentelemetry-api==1.21.0",
