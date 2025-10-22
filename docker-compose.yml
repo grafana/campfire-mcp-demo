@@ -31,7 +31,7 @@ services:
       - monitoring
 
   tempo:
-    image: grafana/tempo:2.3.0@sha256:c07b89ab1c729c460e8e80f57d46fbfdd3e67573d0d6c479c766b3cab8a3afc5
+    image: grafana/tempo:2.9.0@sha256:65a5789759435f1ef696f1953258b9bbdb18eb571d5ce711ff812d2e128288a4
     container_name: tempo
     ports:
       - "3200:3200"
