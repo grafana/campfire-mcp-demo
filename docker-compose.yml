@@ -20,7 +20,7 @@ services:
       - monitoring
 
   loki:
-    image: grafana/loki:3.5.7@sha256:0eaee7bf39cc83aaef46914fb58f287d4f4c4be6ec96b86c2ed55719a75e49c8
+    image: grafana/loki:3.6.5@sha256:847c287ada0e12603910589f42038c5cdaaad04e248bd1dc6c6e0920a235f427
     container_name: loki
     ports:
       - "3100:3100"
