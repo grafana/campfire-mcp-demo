@@ -45,7 +45,7 @@ services:
       - monitoring
 
   promtail:
-    image: grafana/promtail:3.5.7@sha256:086e4e85d2eb383fb04ea83c0f5074da81df56e415062ca888dba426abd8dfa5
+    image: grafana/promtail:3.6.11@sha256:a761cb834cfaeee29745440d4884d6748f0a08d8f68928db1d707018c1dcfbe9
     container_name: promtail
     volumes:
       - /var/log:/var/log:ro
